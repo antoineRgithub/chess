@@ -1,0 +1,65 @@
+import berserk
+import chess
+import chess.engine
+import time
+
+# Lichess API Token (replace with your actual token)
+TOKEN = "lip_FjttZULu46LduFiVw3g1"
+
+# Initialize Berserk client
+session = berserk.TokenSession(TOKEN)
+client = berserk.Client(session)
+
+# Stockfish engine path
+STOCKFISH_PATH = "/path/to/stockfish"  # Change this to your Stockfish binary path
+engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+
+def play_game(game_id):
+    """Plays a game on Lichess using Stockfish"""
+    board = chess.Board()
+    
+    # Stream game moves
+    for event in client.bots.stream_game_state(game_id):
+        if "moves" in event:
+            moves = event["moves"].split()
+            board = chess.Board()
+            for move in moves:
+                board.push_uci(move)
+
+            if board.turn == chess.WHITE:
+                print("Waiting for opponent move...")
+                continue  # Wait for opponent's move
+
+            if board.is_game_over():
+                print("Game Over!")
+                break
+
+            # Get best move from Stockfish
+            result = engine.play(board, chess.engine.Limit(time=2.0))
+            best_move = result.move
+            client.bots.make_move(game_id, best_move.uci())
+            print(f"Played move: {best_move.uci()}")
+
+def main():
+    """Main bot loop to listen for challenges and accept them"""
+    print("Lichess Bot is running...")
+
+    while True:
+        try:
+            for event in client.bots.stream_incoming_events():
+                if event['type'] == 'challenge':
+                    challenge_id = event['challenge']['id']
+                    client.bots.accept_challenge(challenge_id)
+                    print(f"Accepted challenge: {challenge_id}")
+
+                elif event['type'] == 'gameStart':
+                    game_id = event['game']['id']
+                    print(f"Game started: {game_id}")
+                    play_game(game_id)
+        
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)  # Prevent crashing, retry after a delay
+
+if __name__ == "__main__":
+    main()
