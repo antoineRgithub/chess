@@ -4,7 +4,7 @@ import chess.engine
 import time
 
 # Lichess API Token (replace with your actual token)
-TOKEN = "lip_FjttZULu46LduFiVw3g1"
+TOKEN = ""
 
 # Initialize Berserk client
 session = berserk.TokenSession(TOKEN)
